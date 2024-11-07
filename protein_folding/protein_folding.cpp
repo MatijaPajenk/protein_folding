@@ -10,6 +10,7 @@
 #include <random>
 #include <string>
 #include <vector>
+#include <cmath>
 
 constexpr double pi = 3.141592653589793;
 
@@ -56,20 +57,20 @@ std::vector<population_element> initialize_population(const unsigned int np, con
 	return population;
 }
 
-int main(const int argc, char *argv[]) {
-	//const std::vector<float> diff = test_angles_util::calculate_diff(test_angles_util::my_best_solution, test_angles_util::actual_solution);
-	//std::ranges::for_each(diff.begin(), diff.end(), [](const float x) {std::cout << x << ", "; });
-	//return 0;
-
-	//test_program(argv[1]);
-	//return 0;
-
-	if (argc != 12) {
-		std::cerr << "Usage: " << argv[0]
-			<< "<program> <vector<'a'|'b'>> -seed <unsigned int> -target <float> -nfesLmt <unsigned int> -runtimeLmt <unsigned int> -Np <unsigned int>"
-			<< "\n";
-		return 1;
+namespace {
+	bool check_argument_count(const int argc, char *argv[]) {
+		if (argc != 12) {
+			std::cerr << "Usage: " << *argv
+				<< "<program> <vector<'a'|'b'>> -seed <unsigned int> -target <float> -nfesLmt <unsigned int> -runtimeLmt <unsigned int> -Np <unsigned int>"
+				<< "\n";
+			return false;
+		}
+		return true;
 	}
+}
+
+int main(const int argc, char *argv[]) {
+	if (!check_argument_count(argc, argv)) return 1;
 
 	const std::string amino_acid_string = argv[1];
 	const int l = static_cast<int>(amino_acid_string.size());
@@ -81,19 +82,12 @@ int main(const int argc, char *argv[]) {
 	std::map<std::string, std::string> args = parse_arguments(argc, argv);
 	if (args.empty()) return 1;
 
-	unsigned int seed, nfes_lmt, runtime_lmt, np;
-	double target;
 	bool target_reached = false, nfes_limit_reached = false, runtime_limit_reached = false;
-	try {
-		seed = std::stoul(args["-seed"]);
-		target = std::stof(args["-target"]);
-		nfes_lmt = std::stoul(args["-nfesLmt"]);
-		runtime_lmt = std::stoul(args["-runtimeLmt"]);
-		np = std::stoul(args["-Np"]);
-	} catch (const std::exception &e) {
-		std::cerr << "Error: Invalid argument format." << "\n" << e.what() << "\n";
-		return 1;
-	}
+	unsigned int seed = std::stoul(args["-seed"]);
+	const double target = std::stof(args["-target"]);
+	const unsigned int nfes_lmt = std::stoul(args["-nfesLmt"]);
+	const unsigned int runtime_lmt = std::stoul(args["-runtimeLmt"]);
+	const unsigned int np = std::stoul(args["-Np"]);
 
 	std::mt19937 gen(seed);
 
@@ -110,19 +104,15 @@ int main(const int argc, char *argv[]) {
 
 	int best_index = static_cast<int>(std::distance(population.begin(), std::min_element(population.begin(), population.end())));
 
-	float f, cr;
 	int r1, r2;
 
 	const auto start = std::chrono::high_resolution_clock::now();
 	const auto end = start + std::chrono::seconds(runtime_lmt);
 
-	while (true) {
+	while (!nfes_limit_reached && !target_reached && !runtime_limit_reached) {
 		for (int i = 0; i < static_cast<int>(np); ++i) {
-			if (float_randomizer() < 0.1f) f = 0.1f + 0.9f * float_randomizer();
-			else f = population[i].f;
-
-			if (float_randomizer() < 0.1f) cr = float_randomizer();
-			else cr = population[i].cr;
+			const float f = float_randomizer() < 0.1f ? 0.1f + 0.9f * float_randomizer() : population[i].f;
+			const float cr = float_randomizer() < 0.1f ? float_randomizer() : population[i].cr;
 
 			do { r1 = int_randomizer_np(); } while (r1 == i || r1 == best_index);
 			do { r2 = int_randomizer_np(); } while (r2 == i || r2 == r1 || r2 == best_index);
@@ -135,7 +125,6 @@ int main(const int argc, char *argv[]) {
 					u[j] = population[best_index].x[j] + f * (population[r1].x[j] - population[r2].x[j]);
 					if (u[j] <= -pi) u[j] += static_cast<float>(2 * pi);
 					if (u[j] > pi) u[j] += static_cast<float>(2 * -pi);
-					if (u[j] == 0.f) u[j] = 1e-6f;
 				} else {
 					u[j] = population[i].x[j];
 				}
@@ -148,17 +137,11 @@ int main(const int argc, char *argv[]) {
 					us[j] = population[best_index].x[j] + 0.5f * (u[j] - population[i].x[j]);
 					if (us[j] <= -pi) us[j] += static_cast<float>(2 * pi);
 					if (us[j] > pi) us[j] += static_cast<float>(2 * -pi);
-					if (us[j] == 0.f) us[j] = 1e-6f;
 				}
 
 				const double eus = population_element::calculate_e(l, s, us, population_element::generate_p(l, us));
-				if (eus <= eu) {
-					population[i].x = us;
-					population[i].e = eus;
-				} else {
-					population[i].x = u;
-					population[i].e = eu;
-				}
+				population[i].x = eus <= eu ? us : u;
+				population[i].e = eus <= eu ? eus : eu;
 				population[i].f = f;
 				population[i].cr = cr;
 			}
@@ -169,8 +152,6 @@ int main(const int argc, char *argv[]) {
 			if (end < std::chrono::high_resolution_clock::now()) runtime_limit_reached = true;
 			if (population[i].e <= target + 1e-6) target_reached = true;
 		}
-
-		if (target_reached || nfes_limit_reached || runtime_limit_reached) break;
 	}
 	const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
 

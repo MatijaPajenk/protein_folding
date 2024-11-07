@@ -5,7 +5,7 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LocalDebuggerCommandArguments>ABBBBBBABBBAB -seed 1 -target -5.6104 -nfesLmt 1000000 -runtimeLmt 120 -Np 300</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>ABBBBBBABBBAB -seed 30 -target -5.6104 -nfesLmt 1000000 -runtimeLmt 120 -Np 300</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
 </Project>
