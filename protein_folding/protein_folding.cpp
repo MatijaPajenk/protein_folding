@@ -14,50 +14,50 @@
 
 constexpr double pi = 3.141592653589793;
 
-std::vector<amino_acid> parse_amino_acid_string(const std::string &s) {
-	std::vector<amino_acid> amino_acids(s.size());
-	for (int i = 0; i < static_cast<int>(s.size()); ++i) {
-		switch (s[i]) {
-			case 'A':
-				amino_acids[i] = amino_acid::a;
-				break;
-			case 'B':
-				amino_acids[i] = amino_acid::b;
-				break;
-			default:
-				std::cerr << "Error: Invalid amino acid character." << "\n";
-				return {};
-		}
-	}
-	return amino_acids;
-}
-
-std::map<std::string, std::string> parse_arguments(const int argc, char *argv[]) {
-	std::map<std::string, std::string> args;
-	for (int i = 2; i < argc; i += 2) {
-		std::string key = argv[i];
-
-		// Ensure there's a value after the key
-		if (i + 1 < argc) {
-			const std::string value = argv[i + 1];
-			args[key] = value;
-		} else {
-			std::cerr << "Error: No value provided for " << key << '\n';
-			return {};
-		}
-	}
-	return args;
-}
-
-std::vector<population_element> initialize_population(const unsigned int np, const int l, const std::function<float()> &randomizer) {
-	std::vector<population_element> population(np);
-	for (int i = 0; i < static_cast<int>(np); ++i) {
-		population[i] = population_element(population_element::generate_x(2 * l - 5, randomizer));
-	}
-	return population;
-}
-
 namespace {
+	std::vector<amino_acid> parse_amino_acid_string(const std::string &s) {
+		std::vector<amino_acid> amino_acids(s.size());
+		for (int i = 0; i < static_cast<int>(s.size()); ++i) {
+			switch (s[i]) {
+				case 'A':
+					amino_acids[i] = amino_acid::a;
+					break;
+				case 'B':
+					amino_acids[i] = amino_acid::b;
+					break;
+				default:
+					std::cerr << "Error: Invalid amino acid character." << "\n";
+					return {};
+			}
+		}
+		return amino_acids;
+	}
+
+	std::map<std::string, std::string> parse_arguments(const int argc, char *argv[]) {
+		std::map<std::string, std::string> args;
+		for (int i = 2; i < argc; i += 2) {
+			std::string key = argv[i];
+
+			// Ensure there's a value after the key
+			if (i + 1 < argc) {
+				const std::string value = argv[i + 1];
+				args[key] = value;
+			} else {
+				std::cerr << "Error: No value provided for " << key << '\n';
+				return {};
+			}
+		}
+		return args;
+	}
+
+	std::vector<population_element> initialize_population(const unsigned int np, const int l, const std::function<float()> &randomizer) {
+		std::vector<population_element> population(np);
+		for (int i = 0; i < static_cast<int>(np); ++i) {
+			population[i] = population_element(population_element::generate_x(2 * l - 5, randomizer));
+		}
+		return population;
+	}
+
 	bool check_argument_count(const int argc, char *argv[]) {
 		if (argc != 12) {
 			std::cerr << "Usage: " << *argv
@@ -108,6 +108,7 @@ int main(const int argc, char *argv[]) {
 
 	const auto start = std::chrono::high_resolution_clock::now();
 	const auto end = start + std::chrono::seconds(runtime_lmt);
+	unsigned int number_of_energy_calculations = np;
 
 	while (!nfes_limit_reached && !target_reached && !runtime_limit_reached) {
 		for (int i = 0; i < static_cast<int>(np); ++i) {
@@ -131,6 +132,8 @@ int main(const int argc, char *argv[]) {
 			}
 
 			const double eu = population_element::calculate_e(l, s, u, population_element::generate_p(l, u));
+			number_of_energy_calculations++;
+
 			if (eu <= population[i].e) {
 				std::vector<float> us(d);
 				for (int j = 0; j < d; ++j) {
@@ -140,6 +143,7 @@ int main(const int argc, char *argv[]) {
 				}
 
 				const double eus = population_element::calculate_e(l, s, us, population_element::generate_p(l, us));
+				number_of_energy_calculations++;
 				population[i].x = eus <= eu ? us : u;
 				population[i].e = eus <= eu ? eus : eu;
 				population[i].f = f;
@@ -148,14 +152,14 @@ int main(const int argc, char *argv[]) {
 
 			if (population[i].e < population[best_index].e) best_index = i;
 
-			if (population_element::number_of_energy_calculations >= nfes_lmt) nfes_limit_reached = true;
+			if (number_of_energy_calculations >= nfes_lmt) nfes_limit_reached = true;
 			if (end < std::chrono::high_resolution_clock::now()) runtime_limit_reached = true;
 			if (population[i].e <= target + 1e-6) target_reached = true;
 		}
 	}
 	const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
 
-	std::cout << seed << ";" << duration << ";" << population_element::number_of_energy_calculations / duration * 1000 << ";" << population[best_index].e << ";" << population_element::number_of_energy_calculations << "\n";
+	std::cout << seed << ";" << duration << ";" << number_of_energy_calculations / duration * 1000 << ";" << population[best_index].e << ";" << number_of_energy_calculations << "\n";
 
 	//std::ranges::for_each(population[best_index].x.begin(), population[best_index].x.end(), [](const float x) {std::cout << x * 180 / pi << " "; });
 

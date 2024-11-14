@@ -32,8 +32,6 @@ std::vector<point> population_element::generate_p(const int l, const std::vector
 	return p;
 }
 
-unsigned int population_element::number_of_energy_calculations = 0;
-
 float population_element::c(const amino_acid &a, const amino_acid &b) {
 	if (a == amino_acid::a && b == amino_acid::a) return 1.0f;
 	if (a == amino_acid::b && b == amino_acid::b) return 0.5f;
@@ -41,7 +39,6 @@ float population_element::c(const amino_acid &a, const amino_acid &b) {
 }
 
 double population_element::calculate_e(const int l, const std::vector<amino_acid> &s, const std::vector<float> &x, const std::vector<point> &p) {
-	number_of_energy_calculations++;
 	double energy_1 = 0;
 
 	for (int i = 0; i < l - 2; ++i) energy_1 += 1 - cosf(x[i]);

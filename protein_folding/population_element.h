@@ -17,9 +17,6 @@ public:
 
 	explicit population_element(const std::vector<float> &x) : x(x) {}
 
-
-	static unsigned int number_of_energy_calculations;
-
 	bool operator<(const population_element &other) const {
 		return e < other.e;
 	}
